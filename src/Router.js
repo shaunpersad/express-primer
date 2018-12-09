@@ -1,51 +1,17 @@
+const crypto = require('crypto');
 const express = require('express');
-
-function getParameters(location, schema = {}) {
-
-    return Object.keys(schema.properties || {})
-        .map(paramName => {
-
-            return {
-                name: paramName,
-                in: location,
-                required: Array.isArray(schema.required) && schema.required.includes(paramName),
-                description: schema.properties[paramName].description
-            };
-        });
-}
-
-function getSchema(schema, schemas) {
-
-    if (!schema) {
-       return null;
-    }
-    if (!schema.$ref) {
-        return schema;
-    }
-
-    schema = schema.$ref.replace('#/components/schemas/', '').split('/').reduce((schemas, key) => {
-
-        return schemas[key];
-
-    }, schemas);
-
-    return getSchema(schema, schemas);
-}
 
 class Router {
 
     constructor(components = {}) {
 
-        const spec = this.constructor.defaultSpec();
-
-        Object.keys(components || {}).forEach(component => {
-
-            Object.assign(spec.components[component], components[component]);
-        });
-
         this.app = express.Router();
-        this.spec = spec;
         this.tags = [];
+        this.securitySchemeName = '';
+        this.securityRequirement = [];
+        this.spec = this.constructor.defaultSpec();
+
+        Object.assign(this.spec.components, components || {});
     }
 
     group(uri, closure, tags = null) {
@@ -61,36 +27,42 @@ class Router {
         return this;
     }
 
-    route(uri, Endpoint, methods) {
+    secure(middleware, securitySchemeName, securityScheme, securityRequirement = []) {
 
-        if (!methods) {
-            methods = 'get';
-        }
+        Object.assign(this.spec.securitySchemes, { [securitySchemeName]: securityScheme });
+        Object.assign(this, { securitySchemeName, securityRequirement });
+
+        this.app.use(middleware);
+    }
+
+    route(uri, Endpoint, methods = 'get') {
+
         if (!Array.isArray(methods)) {
             methods = [ methods ];
         }
 
         const endpoint = new Endpoint();
-        const middleware = endpoint.createMiddleware(this.spec.components.schemas);
+        const middleware = endpoint.createMiddleware(this.spec);
         const responseCodeSchemas = endpoint.responseCodeSchemas() || {};
         const responseHeaders = endpoint.options.responseHeaders;
-        const bodySchema = getSchema(endpoint.bodySchema());
+        const bodySchema = this.unfold(endpoint.bodySchema());
 
         const operation = endpoint.operation() || {};
 
         operation.tags = Array.from(new Set(this.tags.concat(operation.tags || [])));
 
         operation.parameters = []
-            .concat(getParameters('query', getSchema(endpoint.querySchema())))
-            .concat(getParameters('path', getSchema(endpoint.paramsSchema())))
-            .concat(getParameters('header', getSchema(endpoint.headersSchema())))
-            .concat(getParameters('cookie', getSchema(endpoint.cookiesSchema())))
-            .concat(getParameters('cookie', getSchema(endpoint.signedCookiesSchema())));
+            .concat(this.getParameters('query', endpoint.querySchema()))
+            .concat(this.getParameters('path', endpoint.paramsSchema()))
+            .concat(this.getParameters('header', endpoint.headersSchema()))
+            .concat(this.getParameters('cookie', endpoint.cookiesSchema()))
+            .concat(this.getParameters('cookie', endpoint.signedCookiesSchema()))
+            .concat(operation.parameters || []);
 
         operation.responses = Object.keys(responseCodeSchemas)
-            .map(code => {
+            .reduce((responses, code) => {
 
-                const schema = getSchema(responseCodeSchemas[code]);
+                const schema = this.unfold(responseCodeSchemas[code]);
                 const description = schema.description || 'Response';
                 const contentMediaType = schema.contentMediaType || endpoint.options.defaultResponseMediaType;
                 const response = {
@@ -104,10 +76,9 @@ class Router {
                     response.headers = responseHeaders[`${code}`][contentMediaType];
                 }
 
-                return response;
+                return Object.assign(responses, { [`${code}`]: response });
 
-            })
-            .concat(operation.responses || []);
+            }, operation.responses || {});
 
         if (bodySchema) {
 
@@ -120,6 +91,15 @@ class Router {
                 description: bodySchema.description,
                 required: endpoint.options.requestBodyRequiredIfHasSchema
             };
+        }
+
+        if (this.securitySchemeName && !operation.security) {
+
+            operation.security = [
+                {
+                    [this.securitySchemeName]: this.securityRequirement
+                }
+            ];
         }
 
         const path = '/' + uri
@@ -172,7 +152,7 @@ class Router {
                 } else {
                     Object.assign(exists, parameter);
                 }
-                return paramName;
+                return `{${paramName}}`;
 
             })
             .filter(p => !!p)
@@ -193,16 +173,14 @@ class Router {
 
     /**
      *
-     * @param {string} uri
-     * @param {string|object} [info]
-     * @param {function} [closure]
+     * @param {string|object} info
+     * @returns {{openapi, info, paths, components}|*}
      */
-    serveSpec(uri = '/', info = {}, closure) {
+    getSpec(info = {}) {
 
         if (typeof info === 'string') {
 
             const { name: title, version, author, license } = require(info);
-
             info = { title, version };
 
             if (author) {
@@ -237,7 +215,66 @@ class Router {
 
         Object.assign(this.spec.info, info);
 
-        const spec = closure ? closure(this.spec) : this.spec;
+        return this.spec;
+    }
+
+    /**
+     *
+     * @param {string} uri
+     * @param {string|object} info
+     */
+    serveSpec(uri = '/', info = {}) {
+
+        const spec = this.getSpec(info);
+        const hash = crypto.createHash('md5').update(JSON.stringify(spec)).digest('hex');
+        const lastModified = (new Date()).toUTCString();
+
+        this.app.get(uri, function openApiSpecHandler(req, res) {
+
+            res.set({
+                'ETag': hash,
+                'Last-Modified': lastModified,
+                'Cache-Control': 'public, max-age=31536000, must-revalidate'
+            });
+
+            res.send(spec);
+        });
+    }
+
+    listen() {
+
+        const app = express();
+
+        return app.listen.apply(app, arguments);
+    }
+
+    unfold(obj, references = this.spec) {
+
+        if (!obj) {
+            return null;
+        }
+        if (!obj.$ref) {
+            return obj;
+        }
+
+        return obj.$ref.replace('#/', '').split('/').reduce((references, key) => {
+
+            return this.unfold(references[key]);
+
+        }, references);
+    }
+
+    getParameters(location, schema = {}) {
+
+        const _schema = this.unfold(schema);
+
+        return Object.keys(_schema.properties || {})
+            .map(paramName => ({
+                name: paramName,
+                in: location,
+                required: Array.isArray(_schema.required) && _schema.required.includes(paramName),
+                description: _schema.properties[paramName].description
+            }));
     }
 
     static defaultSpec() {
@@ -321,7 +358,8 @@ class Router {
                             }
                         }
                     }
-                }
+                },
+                securitySchemes: {}
             }
         };
     }

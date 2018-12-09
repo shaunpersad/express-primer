@@ -72,7 +72,7 @@ class Endpoint {
 
         const required = ['query', 'params', 'headers', 'cookies', 'signedCookies'];
         const bodySchema = this.bodySchema();
-        if (bodySchema) {
+        if (bodySchema && this.options.requestBodyRequiredIfHasSchema) {
             required.push('body');
         }
 
@@ -94,31 +94,31 @@ class Endpoint {
         throw new Error('Please provide a handler for this endpoint.');
     }
 
-    createRequestValidator(defsSchema) {
+    createRequestValidator(spec) {
 
         const ajv = new Ajv(this.options.requestAjvOptions);
         const requestSchema = this.requestSchema() || {};
-        return ajv.addSchema(defsSchema).compile(requestSchema);
+        return ajv.addSchema(spec).compile(requestSchema);
     }
 
-    createResponseValidators(defsSchema) {
+    createResponseValidators(spec) {
 
         const ajv = new Ajv(this.options.responseAjvOptions);
         const schemas = this.responseCodeSchemas() || {};
 
         return Object.keys(schemas).reduce((validators, code) => {
 
-            validators[`${code}`] = ajv.addSchema(defsSchema).compile(schemas[code]);
+            validators[`${code}`] = ajv.addSchema(spec).compile(schemas[code]);
 
             return validators;
 
         }, {});
     }
 
-    createMiddleware(defsSchema) {
+    createMiddleware(spec) {
 
-        const requestValidator = this.createRequestValidator(defsSchema);
-        const responseValidators = this.createResponseValidators(defsSchema);
+        const requestValidator = this.createRequestValidator(spec);
+        const responseValidators = this.createResponseValidators(spec);
         const { defaultResponseCode, defaultResponseHeaders, validateResponse } = this.options;
 
         return (req, res, next) => {
@@ -168,12 +168,12 @@ class Endpoint {
 
     /**
      *
-     * @param {string} ref
+     * @param {string} $ref
      * @returns {{$ref: string}}
      */
-    static referenceSchema(ref) {
+    static reference($ref) {
 
-        return { $ref: `#/components/schemas/${ref}` };
+        return { $ref };
     }
 
     static objectSchema(properties = {}, required = null) {

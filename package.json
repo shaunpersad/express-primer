@@ -1,0 +1,24 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "Adds validation and spec generation to express apps",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shaunpersad/express-primer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shaunpersad/express-primer/issues"
+  },
+  "homepage": "https://github.com/shaunpersad/express-primer#readme",
+  "peerDependencies": {
+    "ajv": "^6.5.5",
+    "express": "^4.16.4"
+  }
+}
