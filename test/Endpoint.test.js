@@ -1,7 +1,7 @@
 const httpMocks = require('node-mocks-http');
 const { expect } = require('chai');
 const { EventEmitter } = require('events');
-const { constants, Endpoint, EndpointError, Response, ValidationError } = require('../index');
+const { constants, Endpoint, Response, ValidationError } = require('../index');
 const { OPEN_API_REFERENCE_ID } = constants;
 
 describe('Endpoint', function() {

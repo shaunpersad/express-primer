@@ -1,11 +1,9 @@
 const path = require('path');
-const { EventEmitter } = require('events');
 
 const httpMocks = require('node-mocks-http');
 const request = require('supertest');
 const { expect } = require('chai');
-const { constants, Endpoint, Router, EndpointError, Response, ValidationError } = require('../index');
-const { OPEN_API_REFERENCE_ID } = constants;
+const { Endpoint, Router, EndpointError, ValidationError } = require('../index');
 
 describe('Router', function() {
 
@@ -514,7 +512,7 @@ describe('Router', function() {
 
     describe('OpenAPI spec generation', function() {
 
-        it('generates an OpenAPI 3.0.0 spec based on routes to Endpoints and optionally supplied supplementary spec properties', function(done) {
+        it('generates an OpenAPI 3.0.0 spec based on routes to Endpoints and optionally supplied spec properties', function(done) {
 
             const GetUserEndpoint = class extends Endpoint {
 
