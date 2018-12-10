@@ -3,6 +3,7 @@ const EndpointError = require('./EndpointError');
 const ValidationError = require('./ValidationError');
 const Response = require('./Response');
 
+const { OPEN_API_REFERENCE_ID } = require('./constants');
 
 class Endpoint {
 
@@ -68,28 +69,33 @@ class Endpoint {
         return null;
     }
 
+    /**
+     * @returns {{type: string, properties: {}, required: []}}
+     */
     requestSchema() {
 
-        const required = ['query', 'params', 'headers', 'cookies', 'signedCookies'];
-        const bodySchema = this.bodySchema();
-        if (bodySchema && this.options.requestBodyRequiredIfHasSchema) {
-            required.push('body');
-        }
+        return this.options.requestPropertiesToValidate.reduce((schema, property) => {
 
-        return {
+            const propertySchema = this[`${property}Schema`]();
+            if (propertySchema) {
+                schema.required.push(property);
+            }
+
+            schema.properties[property] = propertySchema || {};
+
+            return schema;
+
+        }, {
             type: 'object',
-            properties: {
-                query: this.querySchema() || {},
-                params: this.paramsSchema() || {},
-                headers: this.headersSchema() || {},
-                cookies: this.cookiesSchema() || {},
-                signedCookies: this.signedCookiesSchema() || {},
-                bodySchema: bodySchema || {}
-            },
-            required
-        };
+            properties: {},
+            required: []
+        });
     }
 
+    /**
+     *
+     * @param req
+     */
     handler(req) {
         throw new Error('Please provide a handler for this endpoint.');
     }
@@ -98,24 +104,29 @@ class Endpoint {
 
         const ajv = new Ajv(this.options.requestAjvOptions);
         const requestSchema = this.requestSchema() || {};
-        return ajv.addSchema(spec).compile(requestSchema);
+        return ajv.addSchema(spec, OPEN_API_REFERENCE_ID).compile(requestSchema);
     }
 
     createResponseValidators(spec) {
 
-        const ajv = new Ajv(this.options.responseAjvOptions);
         const schemas = this.responseCodeSchemas() || {};
 
         return Object.keys(schemas).reduce((validators, code) => {
 
-            validators[`${code}`] = ajv.addSchema(spec).compile(schemas[code]);
+            const ajv = new Ajv(this.options.responseAjvOptions);
+            validators[`${code}`] = ajv.addSchema(spec, OPEN_API_REFERENCE_ID).compile(schemas[code]);
 
             return validators;
 
         }, {});
     }
 
-    createMiddleware(spec) {
+    /**
+     *
+     * @param {{}} [spec]
+     * @returns {function}
+     */
+    createMiddleware(spec = {}) {
 
         const requestValidator = this.createRequestValidator(spec);
         const responseValidators = this.createResponseValidators(spec);
@@ -168,14 +179,20 @@ class Endpoint {
 
     /**
      *
-     * @param {string} $ref
+     * @param {string} ref
      * @returns {{$ref: string}}
      */
-    static reference($ref) {
+    static openApiReference(ref) {
 
-        return { $ref };
+        return { $ref: `${OPEN_API_REFERENCE_ID}${ref}` };
     }
 
+    /**
+     *
+     * @param {{}} properties
+     * @param {[]|null} required
+     * @returns {{type: string, properties, required: *}}
+     */
     static objectSchema(properties = {}, required = null) {
 
         if (!required) {
@@ -189,6 +206,10 @@ class Endpoint {
         };
     }
 
+    /**
+     *
+     * @returns {{requestAjvOptions: {useDefaults: boolean, coerceTypes: boolean}, responseAjvOptions: {useDefaults: boolean, coerceTypes: boolean}, validateResponse: boolean, defaultResponseCode: number, defaultResponseMediaType: string, defaultRequestBodyMediaType: string, requestPropertiesToValidate: string[], requestBodyRequiredIfHasSchema: boolean, responseHeaders: {}}}
+     */
     static defaultOptions() {
 
         return {
@@ -201,10 +222,10 @@ class Endpoint {
                 coerceTypes: true
             },
             validateResponse: false,
-            successResponseCodes: [ 200 ],
             defaultResponseCode: 200,
             defaultResponseMediaType: 'application/json',
             defaultRequestBodyMediaType: 'application/json',
+            requestPropertiesToValidate: ['query', 'params', 'headers', 'cookies', 'signedCookies'],
             requestBodyRequiredIfHasSchema: true,
             responseHeaders: {}
         };
@@ -216,7 +237,7 @@ class Endpoint {
 
             static defaultOptions() {
 
-                return Object.assign({}, super.defaultOptions(), options);
+                return Object.assign(super.defaultOptions(), options);
             }
         }
     }

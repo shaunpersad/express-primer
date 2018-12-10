@@ -1,12 +1,30 @@
 const crypto = require('crypto');
 const express = require('express');
 
+const { OPEN_API_REFERENCE_ID } = require('./constants');
+
+function joinUris(from, to) {
+
+    while (to.startsWith('/')) {
+        to = to.substring(1);
+    }
+    while (from.startsWith('/')) {
+        from = from.substring(1);
+    }
+    while (from.endsWith('/')) {
+        from = from.slice(0, -1);
+    }
+
+    return `${from}/${to}`;
+}
+
 class Router {
 
     constructor(components = {}) {
 
-        this.app = express.Router();
+        this.instance = express.Router();
         this.tags = [];
+        this.uri = '';
         this.securitySchemeName = '';
         this.securityRequirement = [];
         this.spec = this.constructor.defaultSpec();
@@ -14,27 +32,53 @@ class Router {
         Object.assign(this.spec.components, components || {});
     }
 
+    /**
+     *
+     * @param {string|function} uri
+     * @param {function} [closure]
+     * @param {[]|null} [tags]
+     * @returns {Router}
+     */
     group(uri, closure, tags = null) {
+
+        if (arguments.length === 1) {
+            closure = uri;
+            uri = '/';
+        }
 
         const router = new this();
         router.spec = this.spec;
         router.tags = this.tags.concat(tags || []);
+        router.uri = joinUris(this.uri, uri);
 
         closure(router);
 
-        this.app.use(uri, router.app);
+        this.instance.use(uri, router.instance);
 
         return this;
     }
 
+    /**
+     *
+     * @param {function} middleware
+     * @param {string} securitySchemeName
+     * @param {{}} securityScheme
+     * @param {[]} [securityRequirement]
+     */
     secure(middleware, securitySchemeName, securityScheme, securityRequirement = []) {
 
         Object.assign(this.spec.securitySchemes, { [securitySchemeName]: securityScheme });
         Object.assign(this, { securitySchemeName, securityRequirement });
 
-        this.app.use(middleware);
+        this.instance.use(middleware);
     }
 
+    /**
+     *
+     * @param {string} uri
+     * @param {Endpoint} Endpoint
+     * @param {string|[]} [methods]
+     */
     route(uri, Endpoint, methods = 'get') {
 
         if (!Array.isArray(methods)) {
@@ -102,12 +146,12 @@ class Router {
             ];
         }
 
-        const path = '/' + uri
+        const path = '/' + joinUris(this.uri, uri)
             .split('/')
             .map(p => {
 
                 if (!p.startsWith(':')) {
-                    return p;
+                    return p || '';
                 }
                 let paramName = '';
                 let regex = null;
@@ -161,7 +205,7 @@ class Router {
 
         methods.map(m => m.toLowerCase()).forEach(method => {
 
-            this.app[method](uri, middleware);
+            this.instance[method](uri, middleware);
 
             if (!this.spec.paths[path]) {
                 this.spec.paths[path] = {};
@@ -229,7 +273,7 @@ class Router {
         const hash = crypto.createHash('md5').update(JSON.stringify(spec)).digest('hex');
         const lastModified = (new Date()).toUTCString();
 
-        this.app.get(uri, function openApiSpecHandler(req, res) {
+        this.instance.get(uri, function specHandler(req, res) {
 
             res.set({
                 'ETag': hash,
@@ -241,11 +285,11 @@ class Router {
         });
     }
 
-    listen() {
+    addToApp(app = express()) {
 
-        const app = express();
+        app.use(this.instance);
 
-        return app.listen.apply(app, arguments);
+        return app;
     }
 
     unfold(obj, references = this.spec) {
@@ -257,7 +301,13 @@ class Router {
             return obj;
         }
 
-        return obj.$ref.replace('#/', '').split('/').reduce((references, key) => {
+        let prefix = '#/';
+
+        if (obj.$ref.startsWith(`${OPEN_API_REFERENCE_ID}#/`)) {
+            prefix = `${OPEN_API_REFERENCE_ID}#/`;
+        }
+
+        return obj.$ref.replace(prefix, '').split('/').reduce((references, key) => {
 
             return this.unfold(references[key]);
 

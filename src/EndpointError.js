@@ -1,7 +1,7 @@
 
 class EndpointError extends Error {
 
-    constructor(code = 500, message = 'An internal error occurred.', details = {}) {
+    constructor(message = 'An internal error occurred.', code = 500, details = {}) {
 
         super(message);
 

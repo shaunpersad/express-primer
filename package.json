@@ -1,24 +1,40 @@
 {
-  "name": "app",
+  "name": "express-primer",
   "version": "1.0.0",
   "description": "Adds validation and spec generation to express apps",
   "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/mocha/bin/mocha"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shaunpersad/express-primer.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "Shaun Persad",
+    "email": "shaunpersad@gmail.com",
+    "url": "https://shaunasaservice.com"
+  },
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/shaunpersad/express-primer/issues"
   },
   "homepage": "https://github.com/shaunpersad/express-primer#readme",
   "peerDependencies": {
-    "ajv": "^6.5.5",
+    "ajv": "^6.6.1",
     "express": "^4.16.4"
+  },
+  "devDependencies": {
+    "ajv": "^6.6.1",
+    "chai": "^4.2.0",
+    "express": "^4.16.4",
+    "mocha": "^5.2.0",
+    "node-mocks-http": "^1.7.3",
+    "sinon": "^7.1.1",
+    "supertest": "^3.3.0"
   }
 }
