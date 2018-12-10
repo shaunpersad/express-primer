@@ -1,3 +1,5 @@
-module.exports = Object.assign({}, {
-    OPEN_API_REFERENCE_ID: 'openapi'
-});
+module.exports = {
+    get OPEN_API_REFERENCE_ID() {
+        return 'openapi';
+    }
+};

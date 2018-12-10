@@ -153,7 +153,7 @@ class Endpoint {
                     const responseValidator = responseValidators[`${response.code}`];
 
                     if (validateResponse && responseValidator && !responseValidator(response.body)) {
-                        throw new ValidationError(responseValidator.errors, 500, 'Response was not in the expected format.');
+                        throw new ValidationError(responseValidator.errors, 'Response was not in the expected format.', 500);
                     }
 
                     res.set(response.headers);
@@ -231,6 +231,10 @@ class Endpoint {
         };
     }
 
+    /**
+     *
+     * @param {{}} options
+     */
     static withDefaultOptions(options = {}) {
 
         return class extends this {
