@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 
+const EndpointError = require('./EndpointError');
 const { OPEN_API_REFERENCE_ID } = require('./constants');
 
 function joinUris(from, to) {
@@ -33,7 +34,14 @@ class Router {
         this.middleware = [];
         this.spec = this.constructor.defaultSpec();
 
-        Object.assign(this.spec.components, components || {});
+        Object.keys(components || {}).forEach(component => {
+
+            if (!this.spec.components[component]) {
+                this.spec.components[component] = components[component];
+            } else {
+                Object.assign(this.spec.components[component], components[component]);
+            }
+        });
     }
 
     /**
@@ -45,13 +53,10 @@ class Router {
      */
     group(uri, closure, tags = null) {
 
-        if (typeof uri !== 'string') {
+        if (typeof uri !== 'string' && arguments.length < 3) {
             tags = closure || null;
             closure = uri;
             uri = '/';
-        }
-        if (tags !== null && !Array.isArray(tags)) {
-            throw new Error('Tags must be an array or null');
         }
 
         const router = new this.constructor();
@@ -123,12 +128,21 @@ class Router {
             .concat(this.getParameters('cookie', endpoint.signedCookiesSchema()))
             .concat(operation.parameters || []);
 
+        if (operation.parameters.length === 0) {
+            delete operation.parameters;
+        }
+
         operation.responses = Object.keys(responseCodeSchemas)
             .reduce((responses, code) => {
 
                 const schema = this.unfold(responseCodeSchemas[code]);
                 const description = schema.description || 'Response';
                 const contentMediaType = schema.contentMediaType || endpoint.options.defaultResponseMediaType;
+
+                if (schema.contentMediaType) {
+                    delete schema.contentMediaType;
+                }
+
                 const response = {
                     description,
                     content: {
@@ -136,17 +150,30 @@ class Router {
                     }
                 };
 
-                if (responseHeaders[`${code}`] && responseHeaders[`${code}`][contentMediaType]) {
-                    response.headers = responseHeaders[`${code}`][contentMediaType];
+                if (responseHeaders[`${code}`]) {
+                    response.headers = responseHeaders[`${code}`];
                 }
 
                 return Object.assign(responses, { [`${code}`]: response });
 
             }, operation.responses || {});
 
+        if (Object.keys(operation.responses).length === 0) {
+
+            operation.responses = {
+                [endpoint.options.defaultResponseCode]: {
+                    description: 'No schema given for response.'
+                }
+            };
+        }
+
         if (bodySchema) {
 
             const contentMediaType = bodySchema.contentMediaType || endpoint.options.defaultRequestBodyMediaType;
+
+            if (bodySchema.contentMediaType) {
+                delete bodySchema.contentMediaType;
+            }
 
             operation.requestBody = {
                 content: {
@@ -322,9 +349,33 @@ class Router {
         });
     }
 
-    mount(app = express()) {
+    /**
+     *
+     * @param {[function]|function|null} [errorHandlers]
+     * @returns {Function}
+     */
+    mount(errorHandlers = null) {
+
+        const app = express();
 
         app.use(this.instance);
+
+        if (errorHandlers) {
+
+            app.use(errorHandlers);
+        }
+        app.use((err, req, res, next) => {
+
+            if (!(err instanceof EndpointError)) {
+                err = new EndpointError();
+            }
+
+            if (res.headersSent) {
+                return next(err);
+            }
+
+            res.status(err.code).send(err);
+        });
 
         return app;
     }
@@ -360,7 +411,8 @@ class Router {
                 name: paramName,
                 in: location,
                 required: Array.isArray(_schema.required) && _schema.required.includes(paramName),
-                description: _schema.properties[paramName].description
+                description: _schema.properties[paramName].description,
+                schema: _schema
             }));
     }
 

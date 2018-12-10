@@ -1,13 +1,15 @@
+const path = require('path');
+const { EventEmitter } = require('events');
+
 const httpMocks = require('node-mocks-http');
 const request = require('supertest');
 const { expect } = require('chai');
-const { EventEmitter } = require('events');
 const { constants, Endpoint, Router, EndpointError, Response, ValidationError } = require('../index');
 const { OPEN_API_REFERENCE_ID } = constants;
 
 describe('Router', function() {
 
-    describe('usage', function () {
+    describe('API', function () {
 
         describe(`router.route(uri, Endpoint)`, function() {
 
@@ -116,6 +118,89 @@ describe('Router', function() {
             });
         });
 
+        describe('router.group(closure)', function() {
+
+            it('creates a new group', function(done) {
+
+                const router = new Router();
+                const body1 = 'hi';
+                const body2 = 'hello';
+
+                router.group(router => {
+
+                    router.use((req, res, next) => {
+                        req.query.check = body1;
+                        next();
+                    });
+
+                    router.group('/foo', router => {
+
+                        router.route('/bar', Endpoint.withHandler(req => req.query.check));
+
+                    });
+                });
+
+                router.route('/', Endpoint.withHandler(req => req.query.check));
+
+                const app = router.mount();
+
+                Promise.all([
+
+                    request(app).get('/foo/bar').query({check: body2}).expect(200, body1),
+                    request(app).get('/').query({check: body2}).expect(200, body2)
+
+                ]).then(() => done()).catch(done);
+
+            });
+        });
+
+        describe('router.group(closure, tags)', function() {
+
+            it('creates a new group, where any descendant endpoints will inherit the supplied tags', function(done) {
+
+                const router = new Router();
+                const body1 = 'hi';
+                const body2 = 'hello';
+
+                router.group(router => {
+
+                    router.use((req, res, next) => {
+                        req.query.check = body1;
+                        next();
+                    });
+
+                    router.group('/foo', router => {
+
+                        router.route('/bar', Endpoint.withHandler(req => req.query.check));
+
+                    }, ['foo']);
+
+                    router.route('/bat', Endpoint.withHandler(req => req.query.check));
+
+
+                }, ['check']);
+
+                router.route('/', Endpoint.withHandler(req => req.query.check));
+
+                const spec = router.getSpec();
+
+                expect(spec.paths['/foo/bar'].get.tags).to.deep.equal(['check', 'foo']);
+                expect(spec.paths['/bat'].get.tags).to.deep.equal(['check']);
+                expect(spec.paths['/'].get.tags).to.deep.equal([]);
+
+
+                const app = router.mount();
+
+                Promise.all([
+
+                    request(app).get('/foo/bar').query({check: body2}).expect(200, body1),
+                    request(app).get('/').query({check: body2}).expect(200, body2)
+
+                ]).then(() => done()).catch(done);
+
+            });
+        });
+
         describe('router.use(middleware)', function() {
 
             it('applies middleware only to the routes in the group (or descendants)', function(done) {
@@ -217,10 +302,6 @@ describe('Router', function() {
                 router.route('/', Endpoint.withHandler(req => body));
 
                 const app = router.mount();
-                app.use(Endpoint.errorHandler);
-
-                console.log(JSON.stringify(router.getSpec()));
-
 
                 Promise.all([
 
@@ -239,5 +320,348 @@ describe('Router', function() {
 
             });
         });
+
+        describe('router.getSpec(info = {})', function() {
+
+            it('gets an object representation of the OpenAPI spec', function() {
+
+                const router = new Router();
+                const body = 'hi';
+                router.route('/foo', Endpoint.withHandler(req => body));
+
+                expect(router.getSpec()).to.be.an('object');
+            });
+
+            it('merges the optionally supplied object to the info object in the OpenAPI spec', function() {
+
+                const router = new Router();
+                const info = { title: 'foo', version: '2.0.0' };
+                const spec = router.getSpec(info);
+
+                expect(spec.info.title).to.equal(info.title);
+                expect(spec.info.version).to.equal(info.version);
+            });
+        });
+
+        describe('router.getSpec(packageJsonPath)', function() {
+
+            it('uses your package.json file to fill in the info object in the OpenAPI spec', function() {
+
+                const packageJsonPath = path.resolve(__dirname, '../package.json');
+                const packageJson = require(packageJsonPath);
+
+                const router = new Router();
+                const spec = router.getSpec(packageJsonPath);
+
+                expect(spec.info.title).to.equal(packageJson.name);
+                expect(spec.info.version).to.equal(packageJson.version);
+
+            });
+        });
+
+        describe(`router.serveSpec(uri = '/', info = {})`, function() {
+
+            it('serves the spec at the specified URI', function(done) {
+
+                const router = new Router();
+                const body = 'hi';
+                router.route('/foo', Endpoint.withHandler(req => body));
+                router.serveSpec('/bar');
+
+                const spec = router.getSpec();
+                expect(spec).to.be.an('object');
+
+
+                const app = router.mount();
+
+                request(app).get('/bar').expect(200, spec, done);
+
+            });
+
+            it('uses router.getSpec(info) with the optionally supplied info object', function(done) {
+
+                const router = new Router();
+                const body = 'hi';
+                const info = { title: 'foo', version: '2.0.0' };
+                router.route('/foo', Endpoint.withHandler(req => body));
+                router.serveSpec('/bar', info);
+
+                const spec = router.getSpec(info);
+                expect(spec).to.be.an('object');
+
+
+                const app = router.mount();
+
+                request(app).get('/bar').expect(200, spec, done);
+
+            });
+        });
+
+        describe('router.mount()', function() {
+
+            it('mounts the router onto a new express app and returns it', function(done) {
+
+                const router = new Router();
+                const body = 'hi';
+                router.route('/foo', Endpoint.withHandler(req => body));
+
+                const app = router.mount();
+
+                request(app).get('/foo').expect(200, body, done);
+
+            });
+
+            describe('the built-in error handler', function() {
+
+                it('creates responses based on EndpointErrors', function(done) {
+
+                    const router = new Router();
+                    const message = 'hello';
+                    const code = 503;
+                    const details = { foo: 'bar' };
+
+                    router.route('/foo', Endpoint.withHandler(req => {
+
+                        throw new EndpointError(message, code, details);
+                    }));
+
+                    const app = router.mount();
+
+                    request(app).get('/foo').expect(code, {
+                        message,
+                        code,
+                        details
+                    }, done);
+
+                });
+
+                it('converts non-EndpointErrors to EndpointErrors', function(done) {
+
+                    const error = new EndpointError();
+                    const router = new Router();
+
+                    router.route('/foo', Endpoint.withHandler(req => {
+
+                        throw new Error('boom!');
+                    }));
+
+                    const app = router.mount();
+
+                    request(app).get('/foo').expect(error.code, error.toJSON(), done);
+
+                });
+
+                it('properly handles ValidationErrors', function(done) {
+
+                    const router = new Router();
+                    const error = new ValidationError({ foo: 'bar' });
+
+                    router.route('/foo', Endpoint.withHandler(req => {
+
+                        throw error;
+                    }));
+
+                    const app = router.mount();
+
+                    request(app).get('/foo').expect(error.code, error.toJSON(), done);
+
+                });
+            });
+        });
+
+        describe('router.mount(errorHandler)', function() {
+
+            it('mounts the router onto an express app, along with the provided error handler', function(done) {
+
+                const router = new Router();
+                const error = new Error('hello');
+                const errorHandler = (err, req, res, next) => {
+
+                    res.send(error.message);
+                };
+
+
+                router.route('/foo', Endpoint.withHandler(req => {
+                    throw error;
+                }));
+
+                const app = router.mount(errorHandler);
+
+                request(app).get('/foo').expect(200, error.message, done);
+
+            });
+
+            it('also accepts an array of error handlers', function(done) {
+
+                const router = new Router();
+                const error = new Error('hello');
+                const errorHandler = (err, req, res, next) => {
+
+                    res.send(error.message);
+                };
+
+
+                router.route('/foo', Endpoint.withHandler(req => {
+                    throw error;
+                }));
+
+                const app = router.mount([errorHandler]);
+
+                request(app).get('/foo').expect(200, error.message, done);
+            });
+        });
     });
+
+    describe('OpenAPI spec generation', function() {
+
+        it('generates an OpenAPI 3.0.0 spec based on routes to Endpoints and optionally supplied supplementary spec properties', function(done) {
+
+            const GetUserEndpoint = class extends Endpoint {
+
+                paramsSchema() {
+                    return Endpoint.objectSchema({
+                        userId: {
+                            type: 'string',
+                            description: 'The id of the user to retrieve.'
+                        }
+                    });
+                }
+
+                responseCodeSchemas() {
+
+                    return {
+                        '200': Endpoint.openApiReference('#/components/schemas/User')
+                    };
+                }
+
+                handler(req) {
+
+                }
+            };
+
+            const CreateUserEndpoint = class extends Endpoint {
+
+                bodySchema() {
+
+                    return {
+                        type: 'object',
+                        description: 'The user details',
+                        //contentMediaType: 'application/x-www-form-urlencoded',
+                        properties: {
+                            firstName: { type: 'string' },
+                            lastName: { type: 'string' },
+                            age: {
+                                type: 'integer',
+                                minimum: 16
+                            }
+                        },
+                        required: ['firstName', 'lastName', 'age']
+                    };
+                }
+
+                responseCodeSchemas() {
+
+                    return {
+                        '200': Endpoint.openApiReference('#/components/schemas/User')
+                    };
+                }
+
+                handler(req) {
+
+                }
+            };
+
+            const ListUsersEndpoint = class extends Endpoint {
+
+                querySchema() {
+                    return Endpoint.objectSchema({
+                        page: {
+                            type: 'integer',
+                            minimum: 1,
+                            maximum: 100
+                        },
+                        perPage: {
+                            type: 'integer',
+                            enum: [ 10, 20, 50, 100 ]
+                        }
+                    });
+                }
+
+                responseCodeSchemas() {
+
+                    return {
+                        '200': {
+                            type: 'array',
+                            items: Endpoint.openApiReference('#/components/schemas/User')
+                        }
+                    };
+                }
+            };
+
+            const token = 'foo';
+
+            const authMiddleware = (req, res, next) => {
+
+                req.authorized = req.query.key === token;
+                next();
+            };
+
+            const checkAuthMiddleware = (req, res, next) => {
+
+                const err = req.authorized ? null : new EndpointError('Not authorized.', 401);
+                next(err);
+            };
+
+            const router = new Router({
+                schemas: {
+                    User: {
+                        type: 'object',
+                        properties: {
+                            id: { type: 'string' },
+                            firstName: { type: 'string' },
+                            lastName: { type: 'string' },
+                            age: { type: 'integer', minimum: 16 }
+                        },
+                        required: ['id', 'firstName', 'lastName', 'age']
+                    }
+                }
+            });
+
+            router.group('/v1', router => {
+
+                router.use(authMiddleware);
+
+                router.group('/users', router => {
+
+                    router.group(router => {
+
+                        router.secure(checkAuthMiddleware, 'Access Token', { type: 'apiKey', name: 'key', in: 'query' });
+
+                        router.route('/:userId', GetUserEndpoint);
+
+                        router.route('/', CreateUserEndpoint, 'post');
+
+                    }, [ 'Authenticated' ]);
+
+                    router.route('/', ListUsersEndpoint);
+                });
+            });
+
+            const packageJsonPath = path.resolve(__dirname, '../package.json');
+            router.serveSpec('/', packageJsonPath);
+
+            const app = router.mount();
+
+            request(app)
+                .get('/')
+                .expect(200)
+                .then(res => {
+
+                    expect(res.body).to.be.an('object');
+                    done();
+                })
+                .catch(done);
+        });
+    });
+
 });

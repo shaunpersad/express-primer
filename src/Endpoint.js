@@ -164,19 +164,6 @@ class Endpoint {
         };
     }
 
-    static errorHandler(err, req, res, next) {
-
-        if (!(err instanceof EndpointError)) {
-            err = new EndpointError();
-        }
-
-        if (res.headersSent) {
-            return next(err);
-        }
-
-        res.status(err.code).send(err);
-    }
-
     /**
      *
      * @param {string} ref

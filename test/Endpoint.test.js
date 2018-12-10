@@ -6,7 +6,7 @@ const { OPEN_API_REFERENCE_ID } = constants;
 
 describe('Endpoint', function() {
 
-    describe('usage', function() {
+    describe('behavior', function() {
 
         it('converts promise-based handlers to express-style middleware', function(done) {
 
@@ -660,99 +660,6 @@ describe('Endpoint', function() {
     });
 
     describe('helpers', function() {
-
-        describe('Endpoint.errorHandler(err, req, res, next)', function() {
-
-            it('creates responses based on EndpointErrors', function(done) {
-
-                const message = 'something happened!';
-                const code = 400;
-                const err = new EndpointError(message, code);
-                const req = httpMocks.createRequest();
-                const res = httpMocks.createResponse({
-                    eventEmitter: EventEmitter
-                });
-                res.on('end', () => {
-
-                    const body = JSON.parse(JSON.stringify(res._getData()));
-                    expect(body).to.deep.equal(err.toJSON());
-                    expect(err.toJSON()).to.deep.equal({
-                        message,
-                        code,
-                        details: {}
-                    });
-                    expect(res._getStatusCode()).to.equal(code);
-                    done();
-                });
-
-                const next = (err) => {
-
-                    if (err) {
-                        return done(err);
-                    }
-
-                    done(new Error('This should not be called.'));
-                };
-
-                Endpoint.errorHandler(err, req, res, next);
-            });
-
-            it('converts non-EndpointErrors to EndpointErrors', function(done) {
-
-                const err = new Error();
-                const endpointError = new EndpointError();
-                const req = httpMocks.createRequest();
-                const res = httpMocks.createResponse({
-                    eventEmitter: EventEmitter
-                });
-                res.on('end', () => {
-
-                    const body = JSON.parse(JSON.stringify(res._getData()));
-                    expect(body).to.deep.equal(endpointError.toJSON());
-                    expect(res._getStatusCode()).to.equal(endpointError.code);
-                    done();
-                });
-
-                const next = (err) => {
-
-                    if (err) {
-                        return done(err);
-                    }
-
-                    done(new Error('This should not be called.'));
-                };
-
-                Endpoint.errorHandler(err, req, res, next);
-            });
-
-            it('properly handles ValidationErrors', function(done) {
-
-                const err = new ValidationError();
-                const req = httpMocks.createRequest();
-                const res = httpMocks.createResponse({
-                    eventEmitter: EventEmitter
-                });
-                res.on('end', () => {
-
-                    const body = JSON.parse(JSON.stringify(res._getData()));
-                    expect(body).to.deep.equal(err.toJSON());
-                    expect(res._getStatusCode()).to.equal(err.code);
-                    done();
-                });
-
-                const next = (err) => {
-
-                    if (err) {
-                        return done(err);
-                    }
-
-                    done(new Error('This should not be called.'));
-                };
-
-                Endpoint.errorHandler(err, req, res, next);
-
-            });
-        });
 
         describe('Endpoint.openApiReference(ref)', function() {
 
