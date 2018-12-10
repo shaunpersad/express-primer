@@ -245,6 +245,21 @@ class Endpoint {
             }
         }
     }
+
+    /**
+     *
+     * @param handler
+     */
+    static withHandler(handler) {
+
+        return class extends this {
+
+            handler(req) {
+
+                return handler.call(this, req);
+            }
+        }
+    }
 }
 
 module.exports = Endpoint;

@@ -22,11 +22,15 @@ class Router {
 
     constructor(components = {}) {
 
+        /**
+         * @type {express.Router}
+         */
         this.instance = express.Router();
         this.tags = [];
         this.uri = '';
         this.securitySchemeName = '';
         this.securityRequirement = [];
+        this.middleware = [];
         this.spec = this.constructor.defaultSpec();
 
         Object.assign(this.spec.components, components || {});
@@ -35,27 +39,45 @@ class Router {
     /**
      *
      * @param {string|function} uri
-     * @param {function} [closure]
+     * @param {function} [closure(Router)]
      * @param {[]|null} [tags]
      * @returns {Router}
      */
     group(uri, closure, tags = null) {
 
-        if (arguments.length === 1) {
+        if (typeof uri !== 'string') {
+            tags = closure || null;
             closure = uri;
             uri = '/';
         }
+        if (tags !== null && !Array.isArray(tags)) {
+            throw new Error('Tags must be an array or null');
+        }
 
-        const router = new this();
+        const router = new this.constructor();
         router.spec = this.spec;
         router.tags = this.tags.concat(tags || []);
         router.uri = joinUris(this.uri, uri);
+        router.middleware = [].concat(this.middleware);
 
         closure(router);
 
         this.instance.use(uri, router.instance);
 
         return this;
+    }
+
+    /**
+     *
+     * @param {[function]|function} middleware
+     */
+    use(middleware) {
+
+        if (!Array.isArray(middleware)) {
+            middleware = [ middleware ];
+        }
+
+        this.middleware = this.middleware.concat(middleware);
     }
 
     /**
@@ -67,10 +89,10 @@ class Router {
      */
     secure(middleware, securitySchemeName, securityScheme, securityRequirement = []) {
 
-        Object.assign(this.spec.securitySchemes, { [securitySchemeName]: securityScheme });
+        Object.assign(this.spec.components.securitySchemes, { [securitySchemeName]: securityScheme });
         Object.assign(this, { securitySchemeName, securityRequirement });
 
-        this.instance.use(middleware);
+        this.use(middleware);
     }
 
     /**
@@ -86,11 +108,9 @@ class Router {
         }
 
         const endpoint = new Endpoint();
-        const middleware = endpoint.createMiddleware(this.spec);
         const responseCodeSchemas = endpoint.responseCodeSchemas() || {};
         const responseHeaders = endpoint.options.responseHeaders;
         const bodySchema = this.unfold(endpoint.bodySchema());
-
         const operation = endpoint.operation() || {};
 
         operation.tags = Array.from(new Set(this.tags.concat(operation.tags || [])));
@@ -203,9 +223,26 @@ class Router {
             .join('/');
 
 
+        const middleware = endpoint.createMiddleware(this.spec);
+        const handler = (req, res, next) => {
+
+            const stack = this.middleware.concat([middleware]);
+            let index = 0;
+
+            const advance = err => {
+
+                if (err || index === stack.length) {
+                    return next(err);
+                }
+                stack[index++](req, res, advance);
+            };
+
+            advance();
+        };
+
         methods.map(m => m.toLowerCase()).forEach(method => {
 
-            this.instance[method](uri, middleware);
+            this.instance[method](uri, handler);
 
             if (!this.spec.paths[path]) {
                 this.spec.paths[path] = {};
@@ -285,7 +322,7 @@ class Router {
         });
     }
 
-    addToApp(app = express()) {
+    mount(app = express()) {
 
         app.use(this.instance);
 
@@ -314,9 +351,9 @@ class Router {
         }, references);
     }
 
-    getParameters(location, schema = {}) {
+    getParameters(location, schema) {
 
-        const _schema = this.unfold(schema);
+        const _schema = this.unfold(schema || {});
 
         return Object.keys(_schema.properties || {})
             .map(paramName => ({

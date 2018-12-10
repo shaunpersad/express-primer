@@ -724,6 +724,34 @@ describe('Endpoint', function() {
 
                 Endpoint.errorHandler(err, req, res, next);
             });
+
+            it('properly handles ValidationErrors', function(done) {
+
+                const err = new ValidationError();
+                const req = httpMocks.createRequest();
+                const res = httpMocks.createResponse({
+                    eventEmitter: EventEmitter
+                });
+                res.on('end', () => {
+
+                    const body = JSON.parse(JSON.stringify(res._getData()));
+                    expect(body).to.deep.equal(err.toJSON());
+                    expect(res._getStatusCode()).to.equal(err.code);
+                    done();
+                });
+
+                const next = (err) => {
+
+                    if (err) {
+                        return done(err);
+                    }
+
+                    done(new Error('This should not be called.'));
+                };
+
+                Endpoint.errorHandler(err, req, res, next);
+
+            });
         });
 
         describe('Endpoint.openApiReference(ref)', function() {
@@ -796,6 +824,22 @@ describe('Endpoint', function() {
 
                 expect(MyEndpoint.defaultOptions().validateResponse).to.equal(true);
 
+            });
+        });
+
+
+        describe('Endpoint.withHandler(handler)', function() {
+
+            it('creates a subclass with the supplied handler', function(done) {
+
+                const request = {};
+                const MyEndpoint = Endpoint.withHandler((req) => {
+
+                    expect(req).to.equal(request);
+                    done();
+                });
+                const endpoint = new MyEndpoint();
+                endpoint.handler(request);
             });
         });
     });
