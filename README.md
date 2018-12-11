@@ -66,7 +66,7 @@ A bit different, but not by much, and the benefits of the Express Primer approac
 
 ### Complex example
 
-Consider this *Express* app:
+Consider the following API built in *Express*:
 ```js
 const express = require('express');
 const app = express();
@@ -83,7 +83,7 @@ app.get('/api/v1/greeting', (req, res) => {
 
 app.listen(8080);
 ```
-True, it's still compact and easily understandable. But as an API, this app presents no information about itself to the outside world or to other developers. There is no easy way to validate or constrain the `chosenGreeting`, or to even document to the client of this API what the inputs and outputs are of these endpoints.
+True to Express form, it's still compact and easily understandable. But as an API, this app presents no information about itself to the outside world or to other developers. There is no easy way to validate or constrain the `chosenGreeting`, or to even document to the client of this API what the inputs and outputs are of these endpoints.
 
 Advantages in brevity are lost if validation and documentation are part of your goals (as they should be!). These problems become much more apparent as the number and complexity of endpoints grow.
 
