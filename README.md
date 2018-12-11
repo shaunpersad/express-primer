@@ -49,7 +49,7 @@ app.get('/api/v1/greeting', (req, res) => {
 app.listen(8080);
 
 ```
-True, it's compact and easily understandable. But this app presents no information about itself to the outside world. There is no easy way to validate the `chosenGreeting`, or to even document to the client of this API what the inputs and outputs are of these endpoints.
+True, it's compact and easily understandable. But this app presents no information about itself to the outside world or to other developers. There is no easy way to validate or constrain the `chosenGreeting`, or to even document to the client of this API what the inputs and outputs are of these endpoints.
 
 Here's the Express Primer version:
 ```js
