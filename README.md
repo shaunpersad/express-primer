@@ -28,9 +28,7 @@ The two primary classes are `Endpoint` and `Router`.
 
 The gist is to create `Endpoints` (instead of Express route handlers), which can then be grouped and routed to URLs using a `Router` (instead of Express `app[METHOD]`). 
 
-### A visual explanation
-
-#### Simple example
+### Simple example
 
 Here's a simple "hello world" *Express* app:
 ```js
@@ -66,8 +64,7 @@ app.listen(8080);
 
 A bit different, but not by much, and the benefits of the Express Primer approach are not immediately obvious. For simple apps like this, Express is a better option. But, as your app becomes increasingly complex, things change:
 
-
-#### Complex example
+### Complex example
 
 Consider this *Express* app:
 ```js
@@ -89,7 +86,6 @@ app.listen(8080);
 True, it's still compact and easily understandable. But as an API, this app presents no information about itself to the outside world or to other developers. There is no easy way to validate or constrain the `chosenGreeting`, or to even document to the client of this API what the inputs and outputs are of these endpoints.
 
 Advantages in brevity are lost if validation and documentation are part of your goals (as they should be!). These problems become much more apparent as the number and complexity of endpoints grow.
-
 
 Now, here's the *Express Primer* version:
 ```js
