@@ -45,6 +45,7 @@ app.get('/', (req, res) => {
 app.listen(8080);
 ```
 
+
 Here's the *Express Primer* version:
 ```js
 const { Endpoint, Router } = require('express-primer');
@@ -63,11 +64,12 @@ const app = router.mount();
 app.listen(8080);
 ```
 
-A bit different, but not by much, and the benefits of the Express Primer approach are not immediately obvious. For simple apps like this, Express clearly wins. But, as your app becomes increasingly complex, things change:
+A bit different, but not by much, and the benefits of the Express Primer approach are not immediately obvious. For simple apps like this, Express is a better option. But, as your app becomes increasingly complex, things change:
+
 
 #### Complex example
 
-Consider this **Express** app:
+Consider this *Express* app:
 ```js
 const express = require('express');
 const app = express();
@@ -88,7 +90,8 @@ True, it's still compact and easily understandable. But as an API, this app pres
 
 Advantages in brevity are lost if validation and documentation are part of your goals (as they should be!). These problems become much more apparent as the number and complexity of endpoints grow.
 
-Here's the **Express Primer** version:
+
+Now, here's the *Express Primer* version:
 ```js
 const { Endpoint, Router } = require('express-primer');
 
