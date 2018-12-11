@@ -184,12 +184,12 @@ app.listen(8080);
 ```
 
 The above is clearly much more verbose than the Express method. But what have we gained from this extra work?
-- You are now clearly able to see the **full** description and constraints of all request parameters and response bodies, along with the corresponding response status code.
-- Request parameters are automatically validated before the handler is executed.
-- Invalid requests are automatically rejected with the appropriate 400 error.
-- Routes are very easily grouped.
-- An OpenAPI spec is generated and served at the `/api/spec` URL.
-- Documentation is automatically built from the served OpenAPI spec (via Swagger UI).
+- You are now clearly able to see the **full** description and constraints of all request parameters and response bodies, along with the corresponding response status code. :white_check_mark:
+- Request parameters are automatically validated before the handler is executed. :white_check_mark:
+- Invalid requests are automatically rejected with the appropriate 400 error. :white_check_mark:
+- Routes are very easily grouped. :white_check_mark:
+- An OpenAPI spec is generated and served at the `/api/spec` URL. :white_check_mark:
+- Documentation is automatically built from the served OpenAPI spec (via Swagger UI). :white_check_mark:
 
 Other benefits that will be illustrated in later examples are:
 - Validate *any* request property.
