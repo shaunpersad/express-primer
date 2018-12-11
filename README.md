@@ -96,18 +96,14 @@ router.group('/api/v1', router => {
     router.group('/users', router => {
         
         router.route('/:userId', GetUserEndpoint);
-        
         router.route('/', CreateUserEndpoint, 'post');
-
         router.route('/', ListUsersEndpoint);
     });
     
     router.group('/pets', router => {
         
         router.route('/:petId', GetPetEndpoint);
-        
         router.route('/', CreatePetEndpoint, 'post');
-
         router.route('/', ListPetsEndpoint);
     });    
 });
