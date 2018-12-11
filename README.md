@@ -85,7 +85,7 @@ Unlike Express's route handlers, routing in Express can get very messy! Not just
 
 ### The solution: Express Primer's `Router` class
 
-We can solve this issue by taking inspiration from Laravel's nested routing approach:
+We can solve this issue by taking inspiration from [Laravel's](https://laravel.com/) nested routing approach:
 ```js
 const { Router } = require('express-primer');
 
