@@ -514,6 +514,9 @@ describe('Router', function() {
 
         it('generates an OpenAPI 3.0.0 spec based on routes to Endpoints and optionally supplied spec properties', function(done) {
 
+            /**
+             * These are common schemas that can be re-used in multiple places via references.
+             */
             const openApiReferences = {
                 schemas: {
                     User: {
@@ -544,6 +547,9 @@ describe('Router', function() {
                 }
             };
 
+            /**
+             * Endpoint to retrieve a user.
+             */
             const GetUserEndpoint = class extends Endpoint {
 
                 operation() {
@@ -570,10 +576,13 @@ describe('Router', function() {
                 }
 
                 handler(req) {
-
+                    // implement getting the user based on req.params.userId.
                 }
             };
 
+            /**
+             * Endpoint to retrieve a user's profile.
+             */
             const GetUserProfileEndpoint = class extends Endpoint {
 
                 operation() {
@@ -600,10 +609,13 @@ describe('Router', function() {
                 }
 
                 handler(req) {
-
+                    // implement getting the user's profile based on req.params.userId.
                 }
             };
 
+            /**
+             * Endpoint to create a user.
+             */
             const CreateUserEndpoint = class extends Endpoint {
 
                 operation() {
@@ -637,10 +649,13 @@ describe('Router', function() {
                 }
 
                 handler(req) {
-
+                    // implement user creation based on req.body.
                 }
             };
 
+            /**
+             * Endpoint to list all users.
+             */
             const ListUsersEndpoint = class extends Endpoint {
 
                 operation() {
@@ -676,16 +691,22 @@ describe('Router', function() {
                 }
 
                 handler(req) {
-
+                    // implement getting users based on req.query.page and req.query.perPage.
                 }
             };
 
+            /**
+             * Determines if the request is authenticated.
+             */
             const authMiddleware = (req, res, next) => {
 
                 req.authorized = req.query.key === 'foo'; // the secret key
                 next();
             };
 
+            /**
+             * Requires authentication.
+             */
             const checkAuthMiddleware = (req, res, next) => {
 
                 const err = req.authorized ? null : new EndpointError('Not authorized.', 401);
@@ -708,12 +729,13 @@ describe('Router', function() {
 
                         router.route('/', CreateUserEndpoint, 'post');
 
-                    }, [ 'Authenticated' ]);
+                    });
 
                     router.route('/:userId', GetUserEndpoint);
 
                     router.route('/', ListUsersEndpoint);
-                });
+
+                }, [ 'Users' ]);
             });
 
             const packageJsonPath = path.resolve(__dirname, '../package.json');
