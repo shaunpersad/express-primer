@@ -4,7 +4,7 @@ Express Primer is a more robust base for creating Node APIs, with built-in reque
 ## How?
 We provide several helper classes that make use of standard technologies like [JSON Schema](https://json-schema.org/) and [OpenAPI Spec](https://swagger.io/docs/specification/about/) (formerly known as Swagger Spec). These helper classes create introspection into your API, which naturally and automatically enables features such as validation and documentation.
 
-### JSON Schema in 15 seconds
+### JSON Schema
 JSON Schema is a way to describe the shape and format of a JSON value in the form of a "schema", which is just a JSON object with rules.
 This schema can then be used to validate JSON against its rules, as well as utilized for documentation via OpenAPI.
 
@@ -13,7 +13,7 @@ Here's an example of how JSON Schemas are used for validation: [RunKit](https://
 Here's a list of keywords you can use in a JSON Schema: [AJV Docs](https://github.com/epoberezkin/ajv/blob/master/KEYWORDS.md#type).
 
 
-### OpenAPI in 15 seconds
+### OpenAPI
 OpenAPI is a way to describe your API and its various facets, such as endpoints, request/response structure, models, parameters, etc.
 Like JSON Schemas, it is simply a JSON object. This object can then be ingested to generate documentation, API clients, tests, mocks, etc.
 Many components within the OpenAPI spec are described by JSON Schemas.
