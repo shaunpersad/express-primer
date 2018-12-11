@@ -514,21 +514,88 @@ describe('Router', function() {
 
         it('generates an OpenAPI 3.0.0 spec based on routes to Endpoints and optionally supplied spec properties', function(done) {
 
+            const openApiReferences = {
+                schemas: {
+                    User: {
+                        type: 'object',
+                        description: 'A registered user of the system',
+                        properties: {
+                            id: { type: 'string' },
+                            firstName: { type: 'string' },
+                            lastName: { type: 'string' },
+                            age: { type: 'integer', minimum: 16 }
+                        },
+                        required: ['id', 'firstName', 'lastName', 'age']
+                    },
+                    UserProfile: {
+                        type: 'object',
+                        description: 'Additional data about a user.',
+                        properties: {
+                            likes: {
+                                type: 'array',
+                                items: { type: 'string' }
+                            }
+                        },
+                        required: [ 'likes' ],
+                        default: {
+                            likes: []
+                        }
+                    }
+                }
+            };
+
             const GetUserEndpoint = class extends Endpoint {
 
+                operation() {
+                    return { summary: 'Retrieves a single user by ID.' };
+                }
+
                 paramsSchema() {
-                    return Endpoint.objectSchema({
-                        userId: {
-                            type: 'string',
-                            description: 'The id of the user to retrieve.'
-                        }
-                    });
+                    return {
+                        properties: {
+                            userId: {
+                                type: 'string',
+                                description: 'The id of the user to retrieve.'
+                            }
+                        },
+                        required: [ 'userId' ]
+                    }
                 }
 
                 responseCodeSchemas() {
 
                     return {
-                        '200': Endpoint.openApiReference('#/components/schemas/User')
+                        '200': Endpoint.openApiReference('schemas/User')
+                    };
+                }
+
+                handler(req) {
+
+                }
+            };
+
+            const GetUserProfileEndpoint = class extends Endpoint {
+
+                operation() {
+                    return { summary: `Retrieves a user's profile.` };
+                }
+
+                paramsSchema() {
+                    return {
+                        properties: {
+                            userId: {
+                                type: 'string',
+                                description: `The id of the user whose profile to retrieve.`
+                            }
+                        },
+                        required: [ 'userId' ]
+                    }
+                }
+
+                responseCodeSchemas() {
+
+                    return {
+                        '200': Endpoint.openApiReference('schemas/UserProfile')
                     };
                 }
 
@@ -539,28 +606,33 @@ describe('Router', function() {
 
             const CreateUserEndpoint = class extends Endpoint {
 
+                operation() {
+                    return { summary: 'Creates a new user.' };
+                }
+
                 bodySchema() {
 
                     return {
                         type: 'object',
                         description: 'The user details',
-                        //contentMediaType: 'application/x-www-form-urlencoded',
+                        contentMediaType: 'application/x-www-form-urlencoded',
                         properties: {
                             firstName: { type: 'string' },
                             lastName: { type: 'string' },
                             age: {
                                 type: 'integer',
                                 minimum: 16
-                            }
+                            },
+                            profile: Endpoint.openApiReference('schemas/UserProfile')
                         },
-                        required: ['firstName', 'lastName', 'age']
+                        required: [ 'firstName' ]
                     };
                 }
 
                 responseCodeSchemas() {
 
                     return {
-                        '200': Endpoint.openApiReference('#/components/schemas/User')
+                        '200': Endpoint.openApiReference('schemas/User')
                     };
                 }
 
@@ -571,18 +643,26 @@ describe('Router', function() {
 
             const ListUsersEndpoint = class extends Endpoint {
 
+                operation() {
+                    return { summary: 'Lists all current users.' };
+                }
+
                 querySchema() {
-                    return Endpoint.objectSchema({
-                        page: {
-                            type: 'integer',
-                            minimum: 1,
-                            maximum: 100
-                        },
-                        perPage: {
-                            type: 'integer',
-                            enum: [ 10, 20, 50, 100 ]
+                    return {
+                        properties: {
+                            page: {
+                                type: 'integer',
+                                minimum: 1,
+                                maximum: 100,
+                                default: 1
+                            },
+                            perPage: {
+                                type: 'integer',
+                                enum: [ 10, 20, 50, 100 ],
+                                default: 20
+                            }
                         }
-                    });
+                    };
                 }
 
                 responseCodeSchemas() {
@@ -590,17 +670,19 @@ describe('Router', function() {
                     return {
                         '200': {
                             type: 'array',
-                            items: Endpoint.openApiReference('#/components/schemas/User')
+                            items: Endpoint.openApiReference('schemas/User')
                         }
                     };
                 }
-            };
 
-            const token = 'foo';
+                handler(req) {
+
+                }
+            };
 
             const authMiddleware = (req, res, next) => {
 
-                req.authorized = req.query.key === token;
+                req.authorized = req.query.key === 'foo'; // the secret key
                 next();
             };
 
@@ -610,20 +692,7 @@ describe('Router', function() {
                 next(err);
             };
 
-            const router = new Router({
-                schemas: {
-                    User: {
-                        type: 'object',
-                        properties: {
-                            id: { type: 'string' },
-                            firstName: { type: 'string' },
-                            lastName: { type: 'string' },
-                            age: { type: 'integer', minimum: 16 }
-                        },
-                        required: ['id', 'firstName', 'lastName', 'age']
-                    }
-                }
-            });
+            const router = new Router(openApiReferences);
 
             router.group('/v1', router => {
 
@@ -633,13 +702,15 @@ describe('Router', function() {
 
                     router.group(router => {
 
-                        router.secure(checkAuthMiddleware, 'Access Token', { type: 'apiKey', name: 'key', in: 'query' });
+                        router.secure(checkAuthMiddleware, 'Secret Key', { type: 'apiKey', name: 'key', in: 'query' });
 
-                        router.route('/:userId', GetUserEndpoint);
+                        router.route('/:userId/profile', GetUserProfileEndpoint);
 
                         router.route('/', CreateUserEndpoint, 'post');
 
                     }, [ 'Authenticated' ]);
+
+                    router.route('/:userId', GetUserEndpoint);
 
                     router.route('/', ListUsersEndpoint);
                 });

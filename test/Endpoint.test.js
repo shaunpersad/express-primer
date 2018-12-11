@@ -1,8 +1,7 @@
 const httpMocks = require('node-mocks-http');
 const { expect } = require('chai');
 const { EventEmitter } = require('events');
-const { constants, Endpoint, Response, ValidationError } = require('../index');
-const { OPEN_API_REFERENCE_ID } = constants;
+const { Endpoint, Response, ValidationError } = require('../index');
 
 describe('Endpoint', function() {
 
@@ -406,7 +405,7 @@ describe('Endpoint', function() {
                 }
             ];
 
-            const definitions = {
+            const components = {
                 foo: {
                     bar: Endpoint.objectSchema({
                         a: {
@@ -424,7 +423,7 @@ describe('Endpoint', function() {
                 }
             };
 
-            const schema = Endpoint.openApiReference('#/foo/bar');
+            const schema = Endpoint.openApiReference('foo/bar');
 
             const TestEndpoint = class extends Endpoint {
 
@@ -457,7 +456,7 @@ describe('Endpoint', function() {
 
                 const endpoint = new TestEndpoint();
 
-                const middleware = endpoint.createMiddleware(definitions);
+                const middleware = endpoint.createMiddleware(components);
                 const req = httpMocks.createRequest({
                     query: passingParams,
                     body: passingParams,
@@ -493,7 +492,7 @@ describe('Endpoint', function() {
                 return new Promise((resolve, reject) => {
 
                     const endpoint = new TestEndpoint();
-                    const middleware = endpoint.createMiddleware(definitions);
+                    const middleware = endpoint.createMiddleware(components);
                     const req = httpMocks.createRequest({
                         query: params,
                         body: params,
@@ -551,7 +550,7 @@ describe('Endpoint', function() {
                 }
             ];
 
-            const definitions = {
+            const components = {
                 foo: {
                     bar: Endpoint.objectSchema({
                         a: {
@@ -569,7 +568,7 @@ describe('Endpoint', function() {
                 }
             };
 
-            const schema = Endpoint.openApiReference('#/foo/bar');
+            const schema = Endpoint.openApiReference('foo/bar');
 
             const BaseEndpoint = (class extends Endpoint {
 
@@ -594,7 +593,7 @@ describe('Endpoint', function() {
 
                 const endpoint = new TestEndpoint();
 
-                const middleware = endpoint.createMiddleware(definitions);
+                const middleware = endpoint.createMiddleware(components);
                 const req = httpMocks.createRequest();
                 const res = httpMocks.createResponse({
                     eventEmitter: EventEmitter
@@ -631,7 +630,7 @@ describe('Endpoint', function() {
                     };
 
                     const endpoint = new TestEndpoint();
-                    const middleware = endpoint.createMiddleware(definitions);
+                    const middleware = endpoint.createMiddleware(components);
                     const req = httpMocks.createRequest();
                     const res = httpMocks.createResponse({
                         eventEmitter: EventEmitter
@@ -665,11 +664,10 @@ describe('Endpoint', function() {
 
             it('creates a JSON reference object that references objects in the OpenAPI spec', function() {
 
-                const ref = '#/foo/bar/baz';
+                const ref = 'foo/bar/baz';
 
-                expect(OPEN_API_REFERENCE_ID).to.exist;
                 expect(Endpoint.openApiReference(ref)).to.deep.equal({
-                    $ref: `${OPEN_API_REFERENCE_ID}${ref}`
+                    $ref: `#/components/${ref}`
                 });
             });
         });

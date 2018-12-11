@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const express = require('express');
 
 const EndpointError = require('./EndpointError');
-const { OPEN_API_REFERENCE_ID } = require('./constants');
 
 function joinUris(from, to) {
 
@@ -21,7 +20,11 @@ function joinUris(from, to) {
 
 class Router {
 
-    constructor(components = {}) {
+    /**
+     *
+     * @param {{}} [openApiReference]
+     */
+    constructor(openApiReference = {}) {
 
         /**
          * @type {express.Router}
@@ -34,12 +37,12 @@ class Router {
         this.middleware = [];
         this.spec = this.constructor.defaultSpec();
 
-        Object.keys(components || {}).forEach(component => {
+        Object.keys(openApiReference || {}).forEach(component => {
 
             if (!this.spec.components[component]) {
-                this.spec.components[component] = components[component];
+                this.spec.components[component] = openApiReference[component];
             } else {
-                Object.assign(this.spec.components[component], components[component]);
+                Object.assign(this.spec.components[component], openApiReference[component]);
             }
         });
     }
@@ -250,7 +253,7 @@ class Router {
             .join('/');
 
 
-        const middleware = endpoint.createMiddleware(this.spec);
+        const middleware = endpoint.createMiddleware(this.spec.components);
         const handler = (req, res, next) => {
 
             const stack = this.middleware.concat([middleware]);
@@ -389,13 +392,7 @@ class Router {
             return obj;
         }
 
-        let prefix = '#/';
-
-        if (obj.$ref.startsWith(`${OPEN_API_REFERENCE_ID}#/`)) {
-            prefix = `${OPEN_API_REFERENCE_ID}#/`;
-        }
-
-        return obj.$ref.replace(prefix, '').split('/').reduce((references, key) => {
+        return obj.$ref.replace('#/', '').split('/').reduce((references, key) => {
 
             return this.unfold(references[key]);
 

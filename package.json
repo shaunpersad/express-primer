@@ -1,6 +1,6 @@
 {
   "name": "express-primer",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "Adds validation and spec generation to express apps",
   "main": "index.js",
   "directories": {

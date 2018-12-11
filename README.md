@@ -62,7 +62,7 @@ class HelloWorldEndpoint extends Endpoint {
 const router = new Router();
 router.route('/', HelloWorldEndpoint);
 
-const app = router.mount();
+const app = router.mount(); // an express app
 
 app.listen(8080);
 ```
@@ -97,9 +97,13 @@ Now, here's the *Express Primer* version:
 const { Endpoint, Router } = require('express-primer');
 
 /**
-* Create a "hello" endpoint.
-*/
+ * Create a "hello" endpoint.
+ */
 class HelloEndpoint extends Endpoint {
+    
+    operation() {
+        return { summary: 'Generic greeting.' };
+    }
     
     responseCodeSchemas() {
         // maps a response code to the expected JSON Schema for that code.
@@ -120,16 +124,20 @@ class HelloEndpoint extends Endpoint {
 }
 
 /**
-* Create a "greeting" endpoint.
-*/
+ * Create a "greeting" endpoint.
+ */
 class GreetingEndpoint extends Endpoint {
+    
+    operation() {
+        return { summary: 'Create your own greetings.' };
+    }
     
     querySchema() {
         // a JSON Schema describing the expected req.query object.
         return {
             properties: {
                 chosenGreeting: {
-                    description: 'Create your own greeting by substituting your own word for "hello".',
+                    description: 'The greeting to use.',
                     type: 'string',
                     maxLength: 25,
                     default: 'hello'
@@ -163,8 +171,8 @@ class GreetingEndpoint extends Endpoint {
 }
 
 /**
-* Route to the created endpoints.
-*/
+ * Route to the created endpoints.
+ */
 const router = new Router();
 
 router.group('/api', router => {
@@ -179,7 +187,7 @@ router.group('/api', router => {
    router.serveSpec('/spec');
 });
 
-const app = router.mount();
+const app = router.mount(); // an express app
 
 app.listen(8080);
 ```

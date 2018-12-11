@@ -3,8 +3,6 @@ const EndpointError = require('./EndpointError');
 const ValidationError = require('./ValidationError');
 const Response = require('./Response');
 
-const { OPEN_API_REFERENCE_ID } = require('./constants');
-
 class Endpoint {
 
     constructor() {
@@ -100,21 +98,22 @@ class Endpoint {
         throw new Error('Please provide a handler for this endpoint.');
     }
 
-    createRequestValidator(spec) {
+    createRequestValidator(components) {
 
         const ajv = new Ajv(this.options.requestAjvOptions);
         const requestSchema = this.requestSchema() || {};
-        return ajv.addSchema(spec, OPEN_API_REFERENCE_ID).compile(requestSchema);
+
+        return ajv.compile(Object.assign({ components }, requestSchema));
     }
 
-    createResponseValidators(spec) {
+    createResponseValidators(components) {
 
         const schemas = this.responseCodeSchemas() || {};
 
         return Object.keys(schemas).reduce((validators, code) => {
 
             const ajv = new Ajv(this.options.responseAjvOptions);
-            validators[`${code}`] = ajv.addSchema(spec, OPEN_API_REFERENCE_ID).compile(schemas[code]);
+            validators[`${code}`] = ajv.compile(Object.assign({ components }, schemas[code]));
 
             return validators;
 
@@ -123,13 +122,13 @@ class Endpoint {
 
     /**
      *
-     * @param {{}} [spec]
+     * @param {{}} [components]
      * @returns {function}
      */
-    createMiddleware(spec = {}) {
+    createMiddleware(components = {}) {
 
-        const requestValidator = this.createRequestValidator(spec);
-        const responseValidators = this.createResponseValidators(spec);
+        const requestValidator = this.createRequestValidator(components);
+        const responseValidators = this.createResponseValidators(components);
         const { defaultResponseCode, defaultResponseHeaders, validateResponse } = this.options;
 
         return (req, res, next) => {
@@ -171,7 +170,7 @@ class Endpoint {
      */
     static openApiReference(ref) {
 
-        return { $ref: `${OPEN_API_REFERENCE_ID}${ref}` };
+        return { $ref: `#/components/${ref}` };
     }
 
     /**
