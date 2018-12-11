@@ -80,7 +80,7 @@ app.use('/api/v1', v1Routes);
 
 app.listen(8080);
 ```
-Unlike Express's route handlers, routing in express can get very messy! Not just messy, but difficult to reason about at a glance.
+Unlike Express's route handlers, routing in Express can get very messy! Not just messy, but difficult to reason about at a glance.
 
 
 ### The solution: Express Primer's `Router` class
