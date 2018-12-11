@@ -132,9 +132,9 @@ The cherry on top is that these routes are also incorporated into the generated 
 router.serveSpec('/spec');
 ```
 
-That spec can then generate documentation via Swagger UI, which looks like [this](https://petstore.swagger.io/);
+That spec can then generate documentation via Swagger UI, which looks like [this](https://petstore.swagger.io/).
 
-It can also be used to automatically create API clients for your front-end, using [swagger-js](https://github.com/swagger-api/swagger-js)
+It can also be used to automatically create API clients for your front-end, using [swagger-js](https://github.com/swagger-api/swagger-js).
 
 
 ## Next steps
