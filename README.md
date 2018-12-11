@@ -201,5 +201,5 @@ Other benefits that will be illustrated in later examples are:
 
 ## Next steps
 
-- Look at the API and examples for the `Endpoint` class.
-- Look at the API and examples for the `Router` class.
+- Look at the API and examples for the `Endpoint` class (coming soon).
+- Look at the API and examples for the `Router` class (coming soon).
