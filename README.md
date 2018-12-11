@@ -31,7 +31,7 @@ The gist is to create `Endpoints` (instead of Express route handlers), which can
 
 ### A visual explanation
 
-Consider this Express app:
+Consider this **Express** app:
 ```js
 const express = require('app');
 const app = express();
@@ -51,7 +51,9 @@ app.listen(8080);
 ```
 True, it's compact and easily understandable. But this app presents no information about itself to the outside world or to other developers. There is no easy way to validate or constrain the `chosenGreeting`, or to even document to the client of this API what the inputs and outputs are of these endpoints.
 
-Here's the Express Primer version:
+Advantages in brevity are lost if validation and documentation are part of your goals (as they should be!).
+
+Here's the **Express Primer** version:
 ```js
 const { Endpoint, Router } = require('express-primer');
 
