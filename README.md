@@ -4,9 +4,6 @@ Adds validation and spec generation to express apps.
 ## What?
 Express Primer is a more robust base for creating Node APIs, with built-in request (and response) validation, easy route nesting, and automatic spec generation and documentation.
 
-## Why?
-Express by itself is a very powerful and flexible tool for creating APIs, but it lacks many features that can significantly improve the quality of APIs and their development.
-
 ## How?
 We provide several helper classes that make use of standard technologies like JSONSchema and OpenAPI. These helper classes create introspection into your API, which naturally and automatically enables features such as validation and documentation.
 
@@ -28,7 +25,135 @@ The `express` and `ajv` packages are peer dependencies, so they must be installe
 ## Usage
 Instead of interacting with Express directly, you will be interacting with Express Primer's classes.
 
-They are: `Endpoint`, `EndpointError`, `Response`, and `Router`.
+The two primary classes are `Endpoint` and `Router`.
+
+The gist is to create `Endpoints` (instead of Express route handlers), which can then be grouped and routed to URLs using a `Router` (instead of Express `app[METHOD]`). 
+
+### A visual explanation
+
+Consider this Express app:
+```js
+const express = require('app');
+const app = express();
+
+app.get('/api/v1/hello', (req, res) => {
+    
+    res.send('hello world!');
+});
+
+app.get('/api/v1/greeting', (req, res) => {
+    
+    res.send({ result: `${req.query.chosenGreeting} world!` });
+});
+
+app.listen(8080);
+
+```
+True, it's compact and easily understandable. But this app presents no information about itself to the outside world. There is no easy way to validate the `chosenGreeting`, or to even document to the client of this API what the inputs and outputs are of these endpoints.
+
+Here's the Express Primer version:
+```js
+const { Endpoint, Router } = require('express-primer');
+
+/**
+* Create a "hello" endpoint.
+*/
+class HelloEndpoint extends Endpoint {
+    
+    responseCodeSchemas() {
+        
+        return {
+            '200': { 
+               type: 'string',
+               const: 'hello world!'
+           }
+        };
+    }
+    
+    handler(req) {
+        
+        return 'hello world!';
+    }
+}
+
+/**
+* Create a "greeting" endpoint.
+*/
+class GreetingEndpoint extends Endpoint {
+    
+    querySchema() {
+        
+        return {
+            type: 'object',
+            properties: {
+                chosenGreeting: {
+                    description: 'Create your own greeting by supplying your own word for "hello".',
+                    type: 'string',
+                    maxLength: 25,
+                    default: 'hello'
+                }
+            }
+        };
+    }
+    
+    responseCodeSchemas() {
+        
+        return {
+            '200': {
+                type: 'object',
+                properties: {
+                    result: { 
+                        type: 'string'
+                    }
+                },
+                required: ['result']
+            }
+        };
+    }
+    
+    handler(req) {
+        
+        return { result: `${req.query.chosenGreeting} world!` };
+    }
+}
+
+/**
+* Route to the created endpoints.
+*/
+const router = new Router();
+
+router.group('/api', router => {
+
+   router.group('/v1', router => {
+       
+       router.route('/hello', HelloEndpoint);
+       
+       router.route('/greeting', GreetingEndpoint);
+   });
+   
+   router.serveSpec('/spec');
+});
+
+const app = router.mount();
+
+app.listen(8080);
+```
+
+The above is clearly much more verbose than the Express method. But what have we gained from this extra work?
+1. You are now clearly able to see the **full** description and constraints of all request parameters and response bodies, along with the corresponding response status code.
+2. Request parameters are automatically validated before the handler is executed.
+3. Invalid requests are automatically rejected with the appropriate 400 error.
+4. Routes are very easily grouped.
+5. An OpenAPI spec is generated and served at the `/api/spec` URL.
+6. Documentation is automatically built from the served OpenAPI spec (via Swagger UI).
+
+Other benefits that will be illustrated in later examples are:
+- Validate *any* request property.
+- Optionally validate responses.
+- The ability to return promises from request handlers.
+- Restrict middleware to specific groups.
+- Protect and document authenticated route groups.
+
 
 ### `Endpoint`
 The `Endpoint` class is a significantly upgraded alternative to traditional Express route handlers. It gives your route handlers the ability to:
