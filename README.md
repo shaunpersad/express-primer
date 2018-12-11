@@ -106,7 +106,8 @@ class HelloEndpoint extends Endpoint {
         return {
             '200': { 
                type: 'string',
-               const: 'hello world!'
+               const: 'hello world!',
+               contentMediaType: 'text/plain'
            }
         };
     }
@@ -142,6 +143,7 @@ class GreetingEndpoint extends Endpoint {
         return {
             '200': {
                 type: 'object',
+                contentMediaType: 'application/json',
                 properties: {
                     result: { 
                         type: 'string'
