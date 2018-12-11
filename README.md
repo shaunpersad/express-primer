@@ -146,7 +146,8 @@ class GreetingEndpoint extends Endpoint {
                 contentMediaType: 'application/json',
                 properties: {
                     result: { 
-                        type: 'string'
+                        type: 'string',
+                        description: 'The generated greeting.'
                     }
                 },
                 required: ['result']
