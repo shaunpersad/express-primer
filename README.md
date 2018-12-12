@@ -1,5 +1,7 @@
 # express-primer
-Express Primer augments [Express.js](https://expressjs.com) with a few helper classes that make use of standard technologies like [JSON Schema](https://json-schema.org/) and [OpenAPI Spec](https://swagger.io/docs/specification/about/) (formerly known as Swagger Spec). These helper classes create introspection into your API, which naturally and automatically enables features such as validation and documentation.
+Express Primer augments [Express.js](https://expressjs.com) with request/response validation, automatic spec generation, auto-generated docs, and easy routing. It accomplishes this with a few helper classes that make use of standard technologies like [JSON Schema](https://json-schema.org/) and [OpenAPI Spec](https://swagger.io/docs/specification/about/) (formerly known as Swagger Spec).
+
+These helper classes create introspection into your API, which naturally and automatically enables features such as validation and documentation.
 
 ## Installation
 
