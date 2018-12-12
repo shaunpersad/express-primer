@@ -122,7 +122,6 @@ router.group(router => {
     router.middleware(requiresAuth); // will be applied to both routes below (and any subgroups).
     
     router.route('/me', MeEndpoint);
-
     router.route('/logout', LogoutEndpoint, 'post');
 });
 
