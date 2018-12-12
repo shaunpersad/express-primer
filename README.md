@@ -71,11 +71,10 @@ const v1Routes = express.router();
 
 userRoutes.get('/:userId', getUserHandler);
 userRoutes.route('/').get(listUsersHandler).post(createUserHandler);
+v1Routes.use('/users', userRoutes);
 
 petRoutes.get('/:petId', getPetHandler);
 petRoutes.route('/').get(listPetsHandler).post(createPetHandler);
-
-v1Routes.use('/users', userRoutes);
 v1Routes.use('/pets', petRoutes);
 
 app.use('/api/v1', v1Routes);
