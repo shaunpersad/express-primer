@@ -11,7 +11,7 @@ npm install express-primer express ajv --save
 The [`express`](https://www.npmjs.com/package/express) and [`ajv`](https://www.npmjs.com/package/ajv) packages are peer dependencies, so they must be installed for `express-primer` to work.
 
 
-## Problem solving - Describing an API endpoint
+## Problem: describing an API endpoint
 
 Here's a simple Express API:
 ```js
@@ -60,7 +60,7 @@ What's more, Express Primer uses this information to:
 - automatically generate an API spec, which auto-generates documentation pages
 
 
-## Problem solving - Declaring an API's routes
+## Problem: declaring an API's routes
 
 Here's a set of nested routes in Express:
 ```js
